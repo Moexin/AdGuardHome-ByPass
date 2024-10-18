@@ -1,0 +1,43 @@
+name: Update
+
+on:
+  push:
+  schedule:
+    - cron: 0 1,7,13,19 * * *
+
+env:
+  TZ: Asia/Shanghai
+
+jobs:
+  Update:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: GetTime
+      run: echo "GET_TIME=$(date +'%Y-%m-%d %H:%M:%S CST')" >> $GITHUB_ENV
+
+    - name: Update
+      run: |
+        wget https://raw.githubusercontent.com/hezhijie0327/GFWList2AGH/source/release.sh -O ./.github/source.sh
+        wget https://raw.githubusercontent.com/hezhijie0327/GFWList2AGH/source/data/data_modify.txt -O ./.github/custom.txt
+        sudo bash ./.github/release.sh
+        sudo rm -f ./ByPass.txt
+        sudo mv ./gfwlist2adguardhome_new/blacklist_lite.txt ./ByPass.txt
+        sudo rm -rf ./gfwlist2adguardhome_new
+        curl -i "https://purge.jsdelivr.net/gh/Moexin/AdGuardHome-ByPass@Files/ByPass.txt"
+        echo "Auto Update ByPass.txt in ${GET_TIME}" > README.md
+
+    - name: Clean
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git checkout --orphan latest_branch
+        git add -A
+        git commit -am "${GET_TIME}"
+        git branch -D Files
+        git branch -m Files
+
+    - name: Push
+      run: git push -f origin Files
